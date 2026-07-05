@@ -262,6 +262,7 @@ select:focus,input:focus{border-color:#0f766e}
         <div style="display:flex;align-items:center;gap:10px">
           <span id="goal-sel-label" style="font-size:13px;font-weight:600;color:#0f766e"></span>
           <button id="next-fin-btn" onclick="showPage('financing')" style="display:none;background:#0f766e;color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s">Next Step: Financing →</button>
+          <span id="fin-congrats" style="display:none;font-size:12px;color:#166534;background:#dcfce7;border:1.5px solid #86efac;border-radius:10px;padding:7px 14px;font-weight:600">✅ Congrats! Incentives cover your full project cost — no financing needed.</span>
         </div>
       </div>
       <div style="height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden">
@@ -516,12 +517,18 @@ function updateGoalBar(){
   document.getElementById('goal-total-label').textContent='— est. $'+goal.toLocaleString()+' to install';
   document.getElementById('goal-bar-fill').style.width=pct.toFixed(1)+'%';
 
-  if(count>0){
+  if(count>0&&remaining===0){
+    document.getElementById('goal-sel-label').innerHTML='🎉 <strong>Fully covered by incentives!</strong>';
+    document.getElementById('next-fin-btn').style.display='none';
+    document.getElementById('fin-congrats').style.display='inline-block';
+  } else if(count>0){
     document.getElementById('goal-sel-label').textContent='$'+sel.toLocaleString()+' covered · $'+remaining.toLocaleString()+' remaining';
     document.getElementById('next-fin-btn').style.display='inline-block';
+    document.getElementById('fin-congrats').style.display='none';
   } else {
     document.getElementById('goal-sel-label').textContent='Click cards below to build your funding plan';
     document.getElementById('next-fin-btn').style.display='none';
+    document.getElementById('fin-congrats').style.display='none';
   }
 
   // Breakdown by interest
@@ -821,7 +828,10 @@ function renderGrid(matched){
       <div style="font-size:48px;margin-bottom:16px">🔍</div>
       <h2 style="font-size:18px;font-weight:700;color:#374151;margin:0 0 8px">No programs matched your profile</h2>
       <p style="color:#6b7280;margin:0 0 16px">We may not have data for your area and interest combination yet.</p>
-      <button onclick="showPage('profile')" style="background:none;border:none;color:#0f766e;font-size:14px;font-weight:600;cursor:pointer;text-decoration:underline">Edit your profile →</button>
+      <div style="display:inline-flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center">
+        <button onclick="showPage('profile')" style="background:none;border:none;color:#0f766e;font-size:14px;font-weight:600;cursor:pointer;text-decoration:underline">Edit your profile →</button>
+        <button onclick="showPage('financing')" style="background:#0f766e;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer">See Financing Options →</button>
+      </div>
     </div>`;
   }else{
     html=activeItems.map(p=>incentiveTile(p)).join('');
