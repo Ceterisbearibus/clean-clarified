@@ -770,6 +770,9 @@ function renderResults(){
     document.getElementById('goal-bar-wrap').style.display='block';
     document.getElementById('select-hint').style.display='block';
     updateGoalBar();
+  } else {
+    document.getElementById('goal-bar-wrap').style.display='none';
+    document.getElementById('select-hint').style.display='none';
   }
 
   // Filter bar
