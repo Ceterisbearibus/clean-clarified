@@ -315,11 +315,18 @@ select:focus,input:focus{border-color:#0f766e}
       <span style="color:#0f766e;text-decoration:underline;text-underline-offset:4px">③ Financing</span>
     </div>
   </div>
+  <!-- Lender selection bar -->
+  <div id="lender-bar-wrap" style="display:none;position:sticky;top:106px;z-index:18;background:#fff;border-bottom:1.5px solid #e5e7eb;padding:12px 24px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+    <div style="max-width:760px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <span id="lender-sel-label" style="font-size:13px;font-weight:600;color:#0f766e"></span>
+      <button id="view-report-btn" onclick="showPage('report')" style="display:none;background:#0f766e;color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer">View My Report →</button>
+    </div>
+  </div>
   <div style="max-width:760px;margin:0 auto;padding:48px 24px 80px;text-align:center" class="fade">
     <div style="font-size:56px;margin-bottom:20px">🏦</div>
     <h1 style="font-size:28px;font-weight:800;color:#111827;margin:0 0 12px">Financing Options</h1>
     <p style="font-size:15px;color:#6b7280;max-width:480px;margin:0 auto 32px">
-      Below are lenders matched to your ZIP code and project type to help cover the remaining cost after incentives.
+      Below are lenders matched to your ZIP code and project type to help cover the remaining cost after incentives. Click a card to select a lender.
     </p>
     <div id="fin-summary" style="background:linear-gradient(135deg,#115e59,#0f766e);color:#fff;border-radius:18px;padding:28px;margin-bottom:32px;text-align:left"></div>
     <div id="lenders-section" style="text-align:left;margin-bottom:24px"></div>
@@ -417,19 +424,20 @@ let appState={
   zip:'',loc:null,ownership:'',homeType:'',
   motivations:[],interests:[],incomeBracket:'',householdSize:'',
   sqft:'',monthlyBill:'',activeFilter:'all',
-  selectedIncentives:new Set()
+  selectedIncentives:new Set(),
+  selectedLenders:new Set()
 };
-try{const s=JSON.parse(localStorage.getItem('cc_v3'));if(s){Object.assign(appState,s);appState.selectedIncentives=new Set(s.selectedIncentives||[]);}}catch{}
+try{const s=JSON.parse(localStorage.getItem('cc_v3'));if(s){Object.assign(appState,s);appState.selectedIncentives=new Set(s.selectedIncentives||[]);appState.selectedLenders=new Set((s.selectedLenders||[]).map(Number));}}catch{}
 // Migrate old 'appliances' interest key to 'hpwh'
 appState.interests=appState.interests.map(i=>i==='appliances'?'hpwh':i);
-function saveState(){try{const s={...appState,selectedIncentives:[...appState.selectedIncentives]};localStorage.setItem('cc_v3',JSON.stringify(s));}catch{}}
+function saveState(){try{const s={...appState,selectedIncentives:[...appState.selectedIncentives],selectedLenders:[...appState.selectedLenders]};localStorage.setItem('cc_v3',JSON.stringify(s));}catch{}}
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   window.scrollTo(0,0);
-  if(id==='financing'){renderFinancingSummary();renderLenders();}
+  if(id==='financing'){renderFinancingSummary();renderLenders();updateLenderBar();}
 }
 
 // ── Home ──────────────────────────────────────────────────────────────────────
@@ -909,20 +917,23 @@ function abbreviateTimeline(str){
 
 function lenderCard(l, remaining){
   const expanded=appState.expandedLender===l.id;
+  const isSel=appState.selectedLenders.has(l.id);
   const maxLoan=parseMaxLoan(l.max_loan);
   const covers=maxLoan>0&&remaining>0?maxLoan>=remaining:null;
   const steps=parseSteps(l.timeline_steps);
   const reqs=l.requirements.split(/(?=\d+\.\s)/).map(s=>s.trim()).filter(Boolean);
-  return `<div class="card-h" style="background:#fff;border-radius:16px;border:1.5px solid #e5e7eb;padding:20px">
+  return `<div id="lender-tile-${l.id}" class="card-h tile-sel${isSel?' selected':''}" onclick="toggleLenderSelection(${l.id},event)" title="Click to select this lender" style="background:#fff;border-radius:16px;border:1.5px solid ${isSel?'#0f766e':'#e5e7eb'};padding:20px;position:relative;cursor:pointer">
+    <div class="sel-check">✓</div>
+    <div class="sel-hint"></div>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${lenderTypeChip(l)}
         ${covers===true?'<span class="chip" style="background:#ccfbf1;color:#115e59">✓ Covers remaining need</span>':''}
         ${covers===false?'<span class="chip" style="background:#fef3c7;color:#b45309">May not cover full remaining need</span>':''}
       </div>
-      <span class="chip" style="background:#f0fdfa;color:#0f766e;white-space:nowrap" title="${l.estimated_timeline}">⏱ ${abbreviateTimeline(l.estimated_timeline)}</span>
+      <span class="chip" style="background:#f0fdfa;color:#0f766e;white-space:nowrap;margin-right:36px" title="${l.estimated_timeline}">⏱ ${abbreviateTimeline(l.estimated_timeline)}</span>
     </div>
-    <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 4px">${l.lender_name}</h3>
+    <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 4px;padding-right:32px">${l.lender_name}</h3>
     <p style="font-size:12px;color:#6b7280;margin:0 0 12px">${l.products.split('|').join(' · ')}</p>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
       <div style="background:#f9fafb;border-radius:10px;padding:10px;text-align:center">
@@ -939,7 +950,7 @@ function lenderCard(l, remaining){
       </div>
     </div>
     <p style="font-size:13px;color:#374151;line-height:1.6;margin:0 0 12px">${l.description}</p>
-    <button onclick="toggleLenderDetail(${l.id})" style="background:none;border:none;color:#0f766e;font-size:12px;font-weight:700;cursor:pointer;padding:0;margin-bottom:${expanded?'14px':'0'}">
+    <button onclick="toggleLenderDetail(${l.id});event.stopPropagation()" style="background:none;border:none;color:#0f766e;font-size:12px;font-weight:700;cursor:pointer;padding:0;margin-bottom:${expanded?'14px':'0'}">
       ${expanded?'▲ Hide steps to apply & requirements':'▼ Show steps to apply & requirements'}
     </button>
     ${expanded?`
@@ -958,9 +969,38 @@ function lenderCard(l, remaining){
     </div>`:''}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
       <span style="font-size:11px;color:#6b7280">${l.eligibility.split('|')[0]}</span>
-      <a href="${l.website}" target="_blank" rel="noopener noreferrer" style="background:#0f766e;color:#fff;font-size:13px;font-weight:700;padding:8px 16px;border-radius:10px;text-decoration:none">Visit Lender →</a>
+      <a href="${l.website}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="background:#0f766e;color:#fff;font-size:13px;font-weight:700;padding:8px 16px;border-radius:10px;text-decoration:none">Visit Lender →</a>
     </div>
   </div>`;
+}
+
+function toggleLenderSelection(id, event){
+  if(event&&(event.target.tagName==='A'||event.target.tagName==='BUTTON'))return;
+  if(appState.selectedLenders.has(id))appState.selectedLenders.delete(id);
+  else appState.selectedLenders.add(id);
+  saveState();
+  const tile=document.getElementById('lender-tile-'+id);
+  if(tile){
+    tile.classList.toggle('selected',appState.selectedLenders.has(id));
+    tile.style.borderColor=appState.selectedLenders.has(id)?'#0f766e':'#e5e7eb';
+  }
+  updateLenderBar();
+}
+
+function updateLenderBar(){
+  const count=appState.selectedLenders.size;
+  const wrap=document.getElementById('lender-bar-wrap');
+  const label=document.getElementById('lender-sel-label');
+  const btn=document.getElementById('view-report-btn');
+  if(!wrap)return;
+  if(count>0){
+    wrap.style.display='block';
+    label.textContent=count+' lender'+( count!==1?'s':'')+' selected for your report';
+    btn.style.display='inline-block';
+  } else {
+    wrap.style.display='none';
+    btn.style.display='none';
+  }
 }
 
 function toggleLenderDetail(id){
@@ -987,13 +1027,18 @@ function renderLenders(){
   const primary=lenders.slice(0,VISIBLE_COUNT);
   const rest=lenders.slice(VISIBLE_COUNT);
   const showAll=!!appState.showAllLenders;
+  // When collapsed, keep any selected cards from 'rest' visible
+  const restSelected=rest.filter(l=>appState.selectedLenders.has(l.id));
+  const restHidden=rest.filter(l=>!appState.selectedLenders.has(l.id));
   wrap.innerHTML=`<p style="font-size:13px;color:#6b7280;margin-bottom:16px">${lenders.length} lender${lenders.length!==1?'s':''} matched to ${appState.loc.state} for your project type${remaining>0?', sorted by largest available loan toward your $'+remaining.toLocaleString()+' remaining need':''}.</p>
     <div style="display:flex;flex-direction:column;gap:16px">${primary.map(l=>lenderCard(l,remaining)).join('')}</div>
+    ${!showAll&&restSelected.length?`<div style="display:flex;flex-direction:column;gap:16px;margin-top:16px">${restSelected.map(l=>lenderCard(l,remaining)).join('')}</div>`:''}
     ${rest.length?(showAll
       ?`<div style="display:flex;flex-direction:column;gap:16px;margin-top:16px">${rest.map(l=>lenderCard(l,remaining)).join('')}</div>
         <div style="text-align:center;margin-top:20px"><button onclick="toggleShowAllLenders()" style="background:none;border:none;color:#0f766e;font-size:13px;font-weight:700;cursor:pointer;text-decoration:underline">See Less Options ↑</button></div>`
-      :`<div style="text-align:center;margin-top:20px"><button onclick="toggleShowAllLenders()" style="background:none;border:none;color:#0f766e;font-size:13px;font-weight:700;cursor:pointer;text-decoration:underline">See ${rest.length} More Option${rest.length!==1?'s':''} →</button></div>`
+      :(restHidden.length?`<div style="text-align:center;margin-top:20px"><button onclick="toggleShowAllLenders()" style="background:none;border:none;color:#0f766e;font-size:13px;font-weight:700;cursor:pointer;text-decoration:underline">See ${restHidden.length} More Option${restHidden.length!==1?'s':''} →</button></div>`:'')
     ):''}`;
+  updateLenderBar();
 }
 
 function toggleShowAllLenders(){
