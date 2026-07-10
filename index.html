@@ -360,6 +360,7 @@ select:focus,input:focus{border-color:#0f766e}
     </div>
     <div id="report-summary-table"></div>
     <div id="report-chart"></div>
+    <div id="report-solar"></div>
     <div style="margin-bottom:28px">
       <h2 style="font-size:18px;font-weight:800;color:#111827;margin:0 0 4px">Selected Incentives</h2>
       <p style="font-size:12px;color:#6b7280;margin:0 0 16px">Programs you've chosen to pursue.</p>
@@ -1243,6 +1244,7 @@ function renderReport(){
 
   document.getElementById('report-summary-table').innerHTML=renderReportSummaryTable(selIncentives,goal,incentiveTotal,remaining,loanCapacity);
   document.getElementById('report-chart').innerHTML=renderInvestmentChart(goal,incentiveTotal,remaining);
+  document.getElementById('report-solar').innerHTML=renderSolarDetail(matched);
 
   document.getElementById('report-incentives').innerHTML=selIncentives.length
     ?selIncentives.map(reportIncentiveCard).join('')
